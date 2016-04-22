@@ -1,0 +1,111 @@
+apply plugin: 'com.android.model.application'
+
+def sdk_path = file(project(':app').projectDir).absolutePath + "/src/main/jni/saurikit"
+
+model {
+    buildTypes {
+        debug
+        release
+    }
+
+    android {
+        compileSdkVersion = 19
+        buildToolsVersion = "23.0.3"
+
+        defaultConfig.with {
+            applicationId = "com.hxms.file"
+            minSdkVersion.apiLevel = 9
+            targetSdkVersion.apiLevel = 23
+            versionCode = 1
+            versionName = "1.0"
+        }
+        tasks.withType(JavaCompile) {
+            sourceCompatibility = JavaVersion.VERSION_1_7
+            targetCompatibility = JavaVersion.VERSION_1_7
+        }
+
+        productFlavors {
+            create("arm") {
+                ndk {
+                    // You can customize the NDK configurations for each
+                    // productFlavors and buildTypes.
+                    abiFilters.add("armeabi")
+                }
+            }
+        }
+    }
+
+    repositories {
+        libs(PrebuiltLibraries) {
+            substrate {
+                headers.srcDir "${sdk_path}"
+//                binaries.withType(SharedLibraryBinary) {
+//                    sharedLibraryFile = file("${sdk_path}/cydia_substrate/lib/armeabi/libsubstrate.so")
+//                }
+                binaries.withType(StaticLibraryBinary) {
+                    staticLibraryFile = file("${sdk_path}/cydia_substrate/lib/armeabi/libsubstrate.so")
+                }
+            }
+            substrateDvm {
+                headers.srcDir "${sdk_path}"
+//                binaries.withType(SharedLibraryBinary) {
+//                    sharedLibraryFile = file("${sdk_path}/cydia_substrate/lib/armeabi/libsubstrate-dvm.so")
+//                }
+                binaries.withType(StaticLibraryBinary) {
+                    staticLibraryFile = file("${sdk_path}/cydia_substrate/lib/armeabi/libsubstrate-dvm.so")
+                }
+            }
+        }
+    }
+
+
+    android.ndk {
+        moduleName = "FileHook.cy" //这是将来so文件的名称，自己取
+        platformVersion = 9 //same as minSdkVersion.apiLevel for better compatibility
+        cppFlags.addAll(['-std=c++11']) // ,'-Wall', '-Werror','-UNDEBUG'
+        ldLibs.addAll(['android', 'log', 'atomic'])
+        stl = "gnustl_static"
+        // stl = "c++_static"
+        abiFilters.addAll(["armeabi"])
+    }
+    android.buildTypes { //蓝色代码是移动了的
+        release {
+            minifyEnabled = true
+            proguardFiles.add(file("proguard-rules.pro")) //紫色代码是改过了的
+        }
+    }
+
+
+
+
+    android.sources {
+        main {
+            jni {
+                dependencies {
+                    library "substrate" linkage "static"
+                    library "substrateDvm" linkage "static"
+                }
+            }
+        }
+    }
+}
+
+// call regular ndk-build(.cmd) script from app directory
+task ndkBuild(type: Exec) {
+    commandLine 'C:\\Documents\\android-ndk-r11c\\ndk-build.cmd', '-C', file('src/main').absolutePath
+}
+
+// call regular ndk-build(.cmd) script from app directory
+task pushToDrivce(type: Exec) {
+    commandLine file('src/main/libs/armeabi/PushToDeivce.cmd').absolutePath
+}
+
+tasks.withType(JavaCompile) {
+    compileTask -> compileTask.dependsOn ndkBuild
+}
+
+
+
+dependencies {
+    compile fileTree(dir: 'libs', include: ['*.jar'])
+}
