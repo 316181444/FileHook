@@ -45,10 +45,13 @@ MSInitialize {
 
 
 MF *Hxms::Hook::my_fopen(const char *path, const char *mode) {
+    pid_t pid = getpid();
+    pid_t tid = gettid();
     // 执行读取操作
     MF *result = old_fopen(path, mode);
 
-    LOGI("Looking ----  %s", path);
+
+    LOGI("Looking fopen [%d:%d] ----  %s ", pid, tid, path);
 
     // 关注文件
     if (result && strstr(path, "/proc")) {
@@ -151,7 +154,7 @@ string Hxms::Hook::readFileFromSystem(string path, MF *pFile) {
     do {
         int realSize;
         char *curPoint = result + blockCount * blockSize;
-        LOGI("调用 calloc 成功  9 %s %d %d, ", path.c_str(), result, curPoint);
+        LOGI("调用 calloc 成功  10 %s %d %d, ", path.c_str(), result, curPoint);
         realSize = fread(curPoint, sizeof(char), blockSize, pFile);
         LOGI("读取文件大小： %d", realSize);
         if (blockSize > realSize) {
